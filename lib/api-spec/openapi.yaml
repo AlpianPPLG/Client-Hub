@@ -3,13 +3,28 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Client Portal API for freelance design business
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication operations
+  - name: projects
+    description: Project management
+  - name: requests
+    description: Client project requests
+  - name: files
+    description: File management
+  - name: comments
+    description: Project comments
+  - name: dashboard
+    description: Dashboard analytics
+  - name: clients
+    description: Client management
+
 paths:
   /healthz:
     get:
@@ -24,6 +39,530 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # Auth
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginBody"
+      responses:
+        "200":
+          description: Successfully logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: Register a new client account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterBody"
+      responses:
+        "201":
+          description: Successfully registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout current user
+      responses:
+        "200":
+          description: Successfully logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  # Projects
+  /projects:
+    get:
+      operationId: listProjects
+      tags: [projects]
+      summary: List all projects (admin sees all, clients see their own)
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, in_progress, review, completed, cancelled]
+        - name: clientId
+          in: query
+          schema:
+            type: ["integer", "null"]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: List of projects
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectListResponse"
+
+    post:
+      operationId: createProject
+      tags: [projects]
+      summary: Create a new project (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProjectBody"
+      responses:
+        "201":
+          description: Created project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+
+  /projects/{id}:
+    get:
+      operationId: getProject
+      tags: [projects]
+      summary: Get a single project
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    patch:
+      operationId: updateProject
+      tags: [projects]
+      summary: Update a project
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProjectBody"
+      responses:
+        "200":
+          description: Updated project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    delete:
+      operationId: deleteProject
+      tags: [projects]
+      summary: Delete a project (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # Project Requests (client-submitted requests)
+  /requests:
+    get:
+      operationId: listRequests
+      tags: [requests]
+      summary: List project requests
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, approved, rejected]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: List of requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RequestListResponse"
+
+    post:
+      operationId: createRequest
+      tags: [requests]
+      summary: Submit a new project request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRequestBody"
+      responses:
+        "201":
+          description: Created request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectRequest"
+
+  /requests/{id}:
+    get:
+      operationId: getRequest
+      tags: [requests]
+      summary: Get a single request
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectRequest"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    patch:
+      operationId: updateRequest
+      tags: [requests]
+      summary: Update or approve/reject a request (admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateRequestBody"
+      responses:
+        "200":
+          description: Updated request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectRequest"
+
+  # Files
+  /projects/{projectId}/files:
+    get:
+      operationId: listProjectFiles
+      tags: [files]
+      summary: List files for a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of files
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProjectFile"
+
+    post:
+      operationId: uploadProjectFile
+      tags: [files]
+      summary: Upload a file to a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UploadFileBody"
+      responses:
+        "201":
+          description: Uploaded file
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectFile"
+
+  /files/{id}:
+    delete:
+      operationId: deleteFile
+      tags: [files]
+      summary: Delete a file
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # Comments
+  /projects/{projectId}/comments:
+    get:
+      operationId: listComments
+      tags: [comments]
+      summary: List comments for a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of comments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Comment"
+
+    post:
+      operationId: createComment
+      tags: [comments]
+      summary: Add a comment to a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCommentBody"
+      responses:
+        "201":
+          description: Created comment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Comment"
+
+  /comments/{id}:
+    delete:
+      operationId: deleteComment
+      tags: [comments]
+      summary: Delete a comment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # Clients (admin only)
+  /clients:
+    get:
+      operationId: listClients
+      tags: [clients]
+      summary: List all clients (admin only)
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: List of clients
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClientListResponse"
+
+  /clients/{id}:
+    get:
+      operationId: getClient
+      tags: [clients]
+      summary: Get a client with their project history
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Client
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClientDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # Dashboard
+  /dashboard/stats:
+    get:
+      operationId: getDashboardStats
+      tags: [dashboard]
+      summary: Get dashboard summary statistics
+      responses:
+        "200":
+          description: Dashboard stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStats"
+
+  /dashboard/activity:
+    get:
+      operationId: getRecentActivity
+      tags: [dashboard]
+      summary: Get recent activity feed
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: Recent activity
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityItem"
+
+  /dashboard/project-status-breakdown:
+    get:
+      operationId: getProjectStatusBreakdown
+      tags: [dashboard]
+      summary: Get project counts grouped by status
+      responses:
+        "200":
+          description: Status breakdown
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StatusBreakdownItem"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +573,512 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+      required:
+        - success
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+          enum: [admin, client]
+        company:
+          type: ["string", "null"]
+        avatarUrl:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - email
+        - name
+        - role
+        - createdAt
+
+    LoginBody:
+      type: object
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+      required:
+        - email
+        - password
+
+    RegisterBody:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        password:
+          type: string
+        company:
+          type: string
+      required:
+        - name
+        - email
+        - password
+
+    AuthResponse:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        token:
+          type: string
+      required:
+        - user
+        - token
+
+    Project:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum: [pending, in_progress, review, completed, cancelled]
+        priority:
+          type: string
+          enum: [low, medium, high, urgent]
+        clientId:
+          type: integer
+        clientName:
+          type: string
+        budget:
+          type: ["number", "null"]
+        deadline:
+          type: ["string", "null"]
+          format: date
+        completedAt:
+          type: ["string", "null"]
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - title
+        - description
+        - status
+        - priority
+        - clientId
+        - clientName
+        - createdAt
+        - updatedAt
+
+    ProjectDetail:
+      allOf:
+        - $ref: "#/components/schemas/Project"
+        - type: object
+          properties:
+            files:
+              type: array
+              items:
+                $ref: "#/components/schemas/ProjectFile"
+            comments:
+              type: array
+              items:
+                $ref: "#/components/schemas/Comment"
+          required:
+            - files
+            - comments
+
+    ProjectListResponse:
+      type: object
+      properties:
+        projects:
+          type: array
+          items:
+            $ref: "#/components/schemas/Project"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+      required:
+        - projects
+        - total
+        - page
+        - limit
+
+    CreateProjectBody:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        clientId:
+          type: integer
+        status:
+          type: string
+          enum: [pending, in_progress, review, completed, cancelled]
+        priority:
+          type: string
+          enum: [low, medium, high, urgent]
+        budget:
+          type: ["number", "null"]
+        deadline:
+          type: ["string", "null"]
+          format: date
+      required:
+        - title
+        - description
+        - clientId
+
+    UpdateProjectBody:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum: [pending, in_progress, review, completed, cancelled]
+        priority:
+          type: string
+          enum: [low, medium, high, urgent]
+        budget:
+          type: ["number", "null"]
+        deadline:
+          type: ["string", "null"]
+          format: date
+
+    ProjectRequest:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        serviceType:
+          type: string
+          enum: [logo_design, branding, web_design, print_design, social_media, illustration, other]
+        budget:
+          type: ["number", "null"]
+        timeline:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [pending, approved, rejected]
+        clientId:
+          type: integer
+        clientName:
+          type: string
+        adminNotes:
+          type: ["string", "null"]
+        projectId:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - title
+        - description
+        - serviceType
+        - status
+        - clientId
+        - clientName
+        - createdAt
+        - updatedAt
+
+    RequestListResponse:
+      type: object
+      properties:
+        requests:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProjectRequest"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+      required:
+        - requests
+        - total
+        - page
+        - limit
+
+    CreateRequestBody:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        serviceType:
+          type: string
+          enum: [logo_design, branding, web_design, print_design, social_media, illustration, other]
+        budget:
+          type: ["number", "null"]
+        timeline:
+          type: string
+      required:
+        - title
+        - description
+        - serviceType
+
+    UpdateRequestBody:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [pending, approved, rejected]
+        adminNotes:
+          type: string
+        projectId:
+          type: ["integer", "null"]
+
+    ProjectFile:
+      type: object
+      properties:
+        id:
+          type: integer
+        projectId:
+          type: integer
+        name:
+          type: string
+        url:
+          type: string
+        size:
+          type: ["integer", "null"]
+        mimeType:
+          type: ["string", "null"]
+        uploadedBy:
+          type: integer
+        uploaderName:
+          type: string
+        uploaderRole:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - projectId
+        - name
+        - url
+        - uploadedBy
+        - uploaderName
+        - uploaderRole
+        - createdAt
+
+    UploadFileBody:
+      type: object
+      properties:
+        name:
+          type: string
+        url:
+          type: string
+        size:
+          type: ["integer", "null"]
+        mimeType:
+          type: ["string", "null"]
+      required:
+        - name
+        - url
+
+    Comment:
+      type: object
+      properties:
+        id:
+          type: integer
+        projectId:
+          type: integer
+        content:
+          type: string
+        authorId:
+          type: integer
+        authorName:
+          type: string
+        authorRole:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - projectId
+        - content
+        - authorId
+        - authorName
+        - authorRole
+        - createdAt
+
+    CreateCommentBody:
+      type: object
+      properties:
+        content:
+          type: string
+      required:
+        - content
+
+    Client:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        company:
+          type: ["string", "null"]
+        projectCount:
+          type: integer
+        activeProjects:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - email
+        - projectCount
+        - activeProjects
+        - createdAt
+
+    ClientDetail:
+      allOf:
+        - $ref: "#/components/schemas/Client"
+        - type: object
+          properties:
+            projects:
+              type: array
+              items:
+                $ref: "#/components/schemas/Project"
+          required:
+            - projects
+
+    ClientListResponse:
+      type: object
+      properties:
+        clients:
+          type: array
+          items:
+            $ref: "#/components/schemas/Client"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+      required:
+        - clients
+        - total
+        - page
+        - limit
+
+    DashboardStats:
+      type: object
+      properties:
+        totalProjects:
+          type: integer
+        activeProjects:
+          type: integer
+        completedProjects:
+          type: integer
+        pendingRequests:
+          type: integer
+        totalClients:
+          type: integer
+        totalRevenue:
+          type: number
+        revenueThisMonth:
+          type: number
+        projectsThisMonth:
+          type: integer
+      required:
+        - totalProjects
+        - activeProjects
+        - completedProjects
+        - pendingRequests
+        - totalClients
+        - totalRevenue
+        - revenueThisMonth
+        - projectsThisMonth
+
+    ActivityItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [project_created, project_updated, request_submitted, request_approved, request_rejected, comment_added, file_uploaded, status_changed]
+        description:
+          type: string
+        projectId:
+          type: ["integer", "null"]
+        projectTitle:
+          type: ["string", "null"]
+        userId:
+          type: integer
+        userName:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - type
+        - description
+        - userId
+        - userName
+        - createdAt
+
+    StatusBreakdownItem:
+      type: object
+      properties:
+        status:
+          type: string
+        count:
+          type: integer
+        label:
+          type: string
+      required:
+        - status
+        - count
+        - label
