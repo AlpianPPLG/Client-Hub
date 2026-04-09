@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "hP9WU433152RxldMczV3d"
+uri = "file://README.md"
+type = "text"
+title = "StudioPortal README"
