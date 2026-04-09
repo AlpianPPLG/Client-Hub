@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -36,11 +36,6 @@ export default function LandingPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
-  if (user) {
-    setLocation("/dashboard");
-    return null;
-  }
-
   const loginForm = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -58,6 +53,13 @@ export default function LandingPage() {
       company: "",
     },
   });
+
+  // Redirect to dashboard if already logged in — must be after all hooks
+  useEffect(() => {
+    if (user) {
+      setLocation("/dashboard");
+    }
+  }, [user, setLocation]);
 
   const onLoginSubmit = async (data: z.infer<typeof loginSchema>) => {
     try {
@@ -86,6 +88,14 @@ export default function LandingPage() {
   };
 
   if (authLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (user) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

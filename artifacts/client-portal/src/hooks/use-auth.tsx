@@ -1,14 +1,25 @@
-import { useState, createContext, useContext, useEffect, ReactNode } from "react";
-import { useGetMe, useLogin, useLogout, useRegister } from "@workspace/api-client-react";
-import { User, LoginBody, RegisterBody } from "@workspace/api-client-react/src/generated/api.schemas";
+import { createContext, useContext, ReactNode } from "react";
+import { useGetMe, useLogin, useLogout, useRegister, getGetMeQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { getGetMeQueryKey } from "@workspace/api-client-react";
+
+type User = {
+  id: number;
+  email: string;
+  name: string;
+  role: "admin" | "client";
+  company: string | null;
+  avatarUrl: string | null;
+  createdAt: string;
+};
+
+type LoginData = { email: string; password: string };
+type RegisterData = { name: string; email: string; password: string; company?: string };
 
 interface AuthContextType {
   user: User | null | undefined;
   isLoading: boolean;
-  login: (data: LoginBody) => Promise<void>;
-  register: (data: RegisterBody) => Promise<void>;
+  login: (data: LoginData) => Promise<void>;
+  register: (data: RegisterData) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -19,36 +30,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { data: user, isLoading, error } = useGetMe({
     query: {
       retry: false,
-    }
+    },
   });
 
   const loginMutation = useLogin();
   const registerMutation = useRegister();
   const logoutMutation = useLogout();
 
-  const handleLogin = async (data: LoginBody) => {
+  const handleLogin = async (data: LoginData) => {
     await loginMutation.mutateAsync({ data });
-    queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
+    await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
   };
 
-  const handleRegister = async (data: RegisterBody) => {
+  const handleRegister = async (data: RegisterData) => {
     await registerMutation.mutateAsync({ data });
-    queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
+    await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
   };
 
   const handleLogout = async () => {
     await logoutMutation.mutateAsync();
-    queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
+    queryClient.setQueryData(getGetMeQueryKey(), null);
+    await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
   };
 
   return (
-    <AuthContext.Provider value={{
-      user: error ? null : user,
-      isLoading,
-      login: handleLogin,
-      register: handleRegister,
-      logout: handleLogout
-    }}>
+    <AuthContext.Provider
+      value={{
+        user: error ? null : (user as User | undefined),
+        isLoading,
+        login: handleLogin,
+        register: handleRegister,
+        logout: handleLogout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
